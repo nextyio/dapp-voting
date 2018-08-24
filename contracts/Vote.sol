@@ -1,162 +1,102 @@
-pragma solidity ^0.4.21;
+pragma solidity ^0.4.24;
 
-import './SafeMath.sol';
+import "./SafeMath.sol";
 
-/**
- * @title BasePoll
- * @dev Abstract base class for polling contracts
- */
-contract BasePoll is SafeMath {
-    struct Vote {
-        uint256 time;
-        uint256 weight;
-        bool agree;
+contract Voting is SafeMath {
+    
+    struct Poll {
+        address target;
+        bool ban; //true = ban, false = unban
+        uint256 startTime;
+        uint256 endTime;
+        address[] joinedAdresses;
+        bool result;
+        bool ended;
     }
-
-    uint256 public constant MAX_TOKENS_WEIGHT_DENOM = 1000;
-
-    IERC20Token public token;
-    address public fundAddress;
-
-    uint256 public startTime;
-    uint256 public endTime;
-    bool checkTransfersAfterEnd;
-
-    uint256 public yesCounter = 0;
-    uint256 public noCounter = 0;
-    uint256 public totalVoted = 0;
-
-    bool public finalized;
-    mapping(address => Vote) public votesByAddress;
-
-    modifier checkTime() {
-        require(now >= startTime && now <= endTime);
+    
+    mapping(address => bool) public isTarget;
+    mapping(address => mapping (uint256 => bool)) public votesByAddress;
+    mapping(address => mapping (uint256 => bool)) public joinedByAddress;
+    mapping(address => bool) banned;
+    
+    Poll[] public polls;
+    
+    event PollCreatedSuccess(address _from, address _target);
+    event VoteSuccess(address _from, uint256 _id);
+    
+    modifier onlyGoodMan() {
+        require(!banned[msg.sender] && !isTarget[msg.sender], "banned or is target of a poll");
         _;
     }
-
-    modifier notFinalized() {
-        require(!finalized);
-        _;
+    
+//////////////////////////////////////////////////////////////////
+   
+    constructor () public{
+    
     }
-
-    /**
-     * @dev BasePoll constructor
-     * @param _tokenAddress ERC20 compatible token contract address
-     * @param _fundAddress Fund contract address
-     * @param _startTime Poll start time
-     * @param _endTime Poll end time
-     */
-    function BasePoll(address _tokenAddress, address _fundAddress, uint256 _startTime, uint256 _endTime, bool _checkTransfersAfterEnd) public {
-        require(_tokenAddress != address(0));
-        require(_startTime >= now && _endTime > _startTime);
-
-        token = IERC20Token(_tokenAddress);
-        fundAddress = _fundAddress;
-        startTime = _startTime;
-        endTime = _endTime;
-        finalized = false;
-        checkTransfersAfterEnd = _checkTransfersAfterEnd;
+    
+    function pollCreate(address _target, bool _ban, uint256 _startTime, uint256 _endTime) public {
+        require(!isTarget[_target], "is target of a poll");
+        require(banned[_target] != _ban, "already banned or unbanned");
+        isTarget[_target] = true;
+        Poll memory _poll;
+        _poll.target = _target;
+        _poll.ban = _ban;
+        _poll.startTime = _startTime;
+        _poll.endTime = _endTime;
+        polls.push(_poll);
+        emit PollCreatedSuccess(msg.sender, _target);
     }
-
-    /**
-     * @dev Process user`s vote
-     * @param agree True if user endorses the proposal else False
-     */
-    function vote(bool agree) public checkTime {
-        require(votesByAddress[msg.sender].time == 0);
-
-        uint256 voiceWeight = token.balanceOf(msg.sender);
-        uint256 maxVoiceWeight = safeDiv(token.totalSupply(), MAX_TOKENS_WEIGHT_DENOM);
-        voiceWeight =  voiceWeight <= maxVoiceWeight ? voiceWeight : maxVoiceWeight;
-
-        if(agree) {
-            yesCounter = safeAdd(yesCounter, voiceWeight);
-        } else {
-            noCounter = safeAdd(noCounter, voiceWeight);
-
+    
+    function vote(uint256 id, bool agree) public onlyGoodMan {
+        require(id < polls.length, "id not exist");
+        Poll memory poll = polls[id];
+        require(now >= poll.startTime && now <= poll.endTime, " not during voting time");
+        
+        if (!joinedByAddress[msg.sender][id]) {
+            joinedByAddress[msg.sender][id] = true;
+            polls[id].joinedAdresses.push(msg.sender);
         }
-
-        votesByAddress[msg.sender].time = now;
-        votesByAddress[msg.sender].weight = voiceWeight;
-        votesByAddress[msg.sender].agree = agree;
-
-        totalVoted = safeAdd(totalVoted, 1);
+        
+        votesByAddress[msg.sender][id] = agree;
+        emit VoteSuccess(msg.sender, id);
     }
-
-    /**
-     * @dev Revoke user`s vote
-     */
-    function revokeVote() public checkTime {
-        require(votesByAddress[msg.sender].time > 0);
-
-        uint256 voiceWeight = votesByAddress[msg.sender].weight;
-        bool agree = votesByAddress[msg.sender].agree;
-
-        votesByAddress[msg.sender].time = 0;
-        votesByAddress[msg.sender].weight = 0;
-        votesByAddress[msg.sender].agree = false;
-
-        totalVoted = safeSub(totalVoted, 1);
-        if(agree) {
-            yesCounter = safeSub(yesCounter, voiceWeight);
-        } else {
-            noCounter = safeSub(noCounter, voiceWeight);
-        }
-    }
-
-    /**
-     * @dev Function is called after token transfer from user`s wallet to check and correct user`s vote
-     *
-     */
-    function onTokenTransfer(address tokenHolder, uint256 amount) public {
-        require(msg.sender == fundAddress);
-        if(votesByAddress[tokenHolder].time == 0) {
-            return;
-        }
-        if(!checkTransfersAfterEnd) {
-             if(finalized || (now < startTime || now > endTime)) {
-                 return;
-             }
-        }
-
-        if(token.balanceOf(tokenHolder) >= votesByAddress[tokenHolder].weight) {
-            return;
-        }
-        uint256 voiceWeight = amount;
-        if(amount > votesByAddress[tokenHolder].weight) {
-            voiceWeight = votesByAddress[tokenHolder].weight;
-        }
-
-        if(votesByAddress[tokenHolder].agree) {
-            yesCounter = safeSub(yesCounter, voiceWeight);
-        } else {
-            noCounter = safeSub(noCounter, voiceWeight);
-        }
-        votesByAddress[tokenHolder].weight = safeSub(votesByAddress[tokenHolder].weight, voiceWeight);
-    }
-
-    /**
-     * Finalize poll and call onPollFinish callback with result
-     */
-    function tryToFinalize() public notFinalized returns(bool) {
-        if(now < endTime) {
-            return false;
-        }
-        finalized = true;
-        onPollFinish(isSubjectApproved());
-        return true;
-    }
-
-    function isNowApproved() public view returns(bool) {
-        return isSubjectApproved();
-    }
-
-    function isSubjectApproved() internal view returns(bool) {
+    
+    function isSubjectApproved(uint256 yesCounter, uint256 noCounter) internal pure returns(bool) {
         return yesCounter > noCounter;
     }
-
-    /**
-     * @dev callback called after poll finalization
-     */
-    function onPollFinish(bool agree) internal;
+    
+    function getPollResult(uint256 id) private view returns(bool) {
+        require(id < polls.length, "id not exist");
+        Poll memory poll = polls[id];
+        uint256 yesCounter = 0;
+        uint256 noCounter = 0;
+        for (uint256 i = 0; i < poll.joinedAdresses.length; i++ ) {
+            address _address = poll.joinedAdresses[i];
+            bool voteValue = votesByAddress[_address][id];
+            if (voteValue) yesCounter = safeAdd(yesCounter,_address.balance); else 
+            noCounter = safeAdd(noCounter,_address.balance);
+        }
+        return isSubjectApproved(yesCounter, noCounter);
+    }
+    
+    function pollEnforce(uint256 id) private {
+        require(id < polls.length, "id not exist");
+        Poll memory poll = polls[id];
+        banned[poll.target] = poll.ban;
+    }
+    
+    function tryToFinalize(uint256 id) public returns(bool) {
+        require(id < polls.length, "id not exist");
+        Poll memory poll = polls[id];
+        if ((now < poll.endTime) || (poll.ended)) {
+            return false;
+        }
+        poll.result = getPollResult(id);
+        delete poll.joinedAdresses;
+        if (poll.result) pollEnforce(id);
+        poll.ended = true;
+        isTarget[poll.target] = false;
+        return true;
+    }
 }
