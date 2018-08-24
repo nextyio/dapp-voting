@@ -1,7 +1,7 @@
 pragma solidity ^0.4.24;
     
-//import "./Ownable.sol";
-import "openzeppelin-zos/contracts/ownership/Ownable.sol";
+import "./Ownable.sol";
+//import "openzeppelin-zos/contracts/ownership/Ownable.sol";
     
     
     /**
@@ -105,6 +105,10 @@ contract Blacklist is Ownable {
     */
     function getBlacklist() public view returns (address[]) {
         return keys;
+    }
+    
+    function inBlacklist(address addr) public view returns(bool) {
+        return blacklist[addr];
     }
 
 } 

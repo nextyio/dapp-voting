@@ -1,9 +1,10 @@
 pragma solidity ^0.4.24;
 
 import "./SafeMath.sol";
+import "./Blacklist.sol";
 
-contract Voting is SafeMath {
-    
+contract Voting {
+    using SafeMath for uint256;
     struct Poll {
         address target;
         bool ban; //true = ban, false = unban
@@ -13,11 +14,13 @@ contract Voting is SafeMath {
         bool result;
         bool ended;
     }
+
+    Blacklist public blacklistContract;
     
     mapping(address => bool) public isTarget;
     mapping(address => mapping (uint256 => bool)) public votesByAddress;
     mapping(address => mapping (uint256 => bool)) public joinedByAddress;
-    mapping(address => bool) banned;
+    //mapping(address => bool) banned;
     
     Poll[] public polls;
     
@@ -25,19 +28,19 @@ contract Voting is SafeMath {
     event VoteSuccess(address _from, uint256 _id);
     
     modifier onlyGoodMan() {
-        require(!banned[msg.sender] && !isTarget[msg.sender], "banned or is target of a poll");
+        require(!blacklistContract.inBlacklist(msg.sender) && !isTarget[msg.sender], "banned or is target of a poll");
         _;
     }
     
 //////////////////////////////////////////////////////////////////
    
-    constructor () public{
-    
+    constructor (address _blacklistAddress) public{
+        blacklistContract = Blacklist(_blacklistAddress);
     }
     
     function pollCreate(address _target, bool _ban, uint256 _startTime, uint256 _endTime) public {
         require(!isTarget[_target], "is target of a poll");
-        require(banned[_target] != _ban, "already banned or unbanned");
+        require(blacklistContract.inBlacklist(_target) != _ban, "already banned or unbanned");
         isTarget[_target] = true;
         Poll memory _poll;
         _poll.target = _target;
@@ -74,8 +77,8 @@ contract Voting is SafeMath {
         for (uint256 i = 0; i < poll.joinedAdresses.length; i++ ) {
             address _address = poll.joinedAdresses[i];
             bool voteValue = votesByAddress[_address][id];
-            if (voteValue) yesCounter = safeAdd(yesCounter,_address.balance); else 
-            noCounter = safeAdd(noCounter,_address.balance);
+            if (voteValue) yesCounter = yesCounter.add(_address.balance); else 
+            noCounter = noCounter.add(_address.balance);
         }
         return isSubjectApproved(yesCounter, noCounter);
     }
@@ -83,7 +86,11 @@ contract Voting is SafeMath {
     function pollEnforce(uint256 id) private {
         require(id < polls.length, "id not exist");
         Poll memory poll = polls[id];
-        banned[poll.target] = poll.ban;
+        //vote to ban
+        if (poll.ban)
+        blacklistContract.addAddressToBlacklist(poll.target); else 
+        //vote to unban
+        blacklistContract.removeAddressFromBlacklist(poll.target);
     }
     
     function tryToFinalize(uint256 id) public returns(bool) {
@@ -98,5 +105,13 @@ contract Voting is SafeMath {
         poll.ended = true;
         isTarget[poll.target] = false;
         return true;
+    }
+    
+    function testAddWithCall(address _address) public {
+        blacklistContract.addAddressToBlacklist(_address);
+    }
+    
+    function testRemoveWithCall(address _address) public {
+        blacklistContract.removeAddressFromBlacklist(_address);
     }
 }
