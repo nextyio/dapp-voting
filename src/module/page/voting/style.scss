@@ -1,0 +1,69 @@
+.alert-withdraw {
+    margin-top: 20px;
+}
+
+.btn-withdraw {
+    margin-top: 20px;
+}
+.text-alert {
+    word-wrap: break-word;
+}
+
+.centerDraw {
+    text-align: center
+}
+
+.defaultWidth {
+    width: 80%;
+    height: 40px;
+}
+  
+.defaultPadding {
+    padding : 5px;
+}
+
+.textBlue {
+    color : blue;
+}
+
+.node {
+    cursor: pointer;
+  }
+  
+  .node circle {
+    fill: #fff;
+    stroke: steelblue;
+    stroke-width: 3px;
+  }
+  
+  .node text {
+    font: 12px sans-serif;
+  }
+  
+  .link {
+    fill: none;
+    stroke: #ccc;
+    stroke-width: 2px;
+  }
+
+  .selectBtn {
+      width: 200px;
+  }
+
+  .contentLeft {
+      text-align: left;
+      margin-top: 10px;
+  }
+
+  .contentCenter {
+    text-align: center;
+    margin-top: 10px;
+}
+
+  .mainDiv {
+      //background: #999;
+      background: white
+  }
+
+
+
