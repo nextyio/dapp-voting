@@ -8,15 +8,8 @@ const Option = Select.Option
 
 const EPSILON= 1e-10
 const CURRENCY= "NTY"
-const TOKENNAME= "SP"
-//dapps address list
 
-const dapp = [
-    {name : "Binary Betting", address: "0xe490384b5617068eb0aa04b45eefbef323fb0500"},
-    {name : "Binary Betting2", address: "0xe490384b5617068eb0aa04b45eefbef323fb0500"},
-]
-
-export default class BinaryBetting extends LoggedInPage {
+export default class Blacklist extends LoggedInPage {
 
     constructor (props) {
         super(props)
@@ -34,6 +27,25 @@ export default class BinaryBetting extends LoggedInPage {
                 walletAddress: _wallet.toString()
             })
             console.log("wallet = " + _wallet.toString())
+        })
+
+        this.props.getBlacklistAddress().then((_blacklistAddress) => {
+            this.setState({
+                blacklistAddress: _blacklistAddress
+            })
+            console.log("Blacklist Address = " + _blacklistAddress)
+        })
+
+        this.props.getBlacklistLength().then((_blacklistLength) => {
+            this.setState({
+                blacklistLength: _blacklistLength
+            })
+            console.log("Blacklist Length = " + _blacklistLength)
+            for (var i = 0; i < _blacklistLength; i++) {
+                this.props.getBlacklistedById(i).then((_address) => {
+                    console.log(_address.toLocaleString())
+                })
+            }
         })
 
         this.loadData()
@@ -62,7 +74,7 @@ export default class BinaryBetting extends LoggedInPage {
         return (
             <Breadcrumb className= "breadcrumb" style={{ 'paddingLeft': '16px', 'paddingTop': '16px', float: 'right' ,background: 'white'}}>
                 <Breadcrumb.Item><Icon type="bank" /> Home</Breadcrumb.Item>
-                <Breadcrumb.Item>SP Token</Breadcrumb.Item>
+                <Breadcrumb.Item>Blacklist</Breadcrumb.Item>
             </Breadcrumb>
         );
     }

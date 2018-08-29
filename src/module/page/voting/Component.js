@@ -1,22 +1,39 @@
 import React from 'react';
 import LoggedInPage from '../LoggedInPage';
-import sha3 from 'solidity-sha3'
 import './style.scss'
+import moment from 'moment/moment'
 
-import { Col, Row, Icon, Select, Breadcrumb, Button, Modal, Notification } from 'antd'
+import { Col, Row, Icon, Select, Breadcrumb, Table, Input, Button, Modal, Notification, DatePicker } from 'antd'
 const Option = Select.Option
 
 const EPSILON= 1e-10
 const CURRENCY= "NTY"
-const TOKENNAME= "SP"
-//dapps address list
+const dateFormat = 'YYYY-MM-DD';
 
-const dapp = [
-    {name : "Binary Betting", address: "0xe490384b5617068eb0aa04b45eefbef323fb0500"},
-    {name : "Binary Betting2", address: "0xe490384b5617068eb0aa04b45eefbef323fb0500"},
-]
+export default class Voting extends LoggedInPage {
+    state = {
+        filteredInfo: null,
+        sortedInfo: null,
+    };
 
-export default class BinaryBetting extends LoggedInPage {
+    handleChange = (pagination, filters, sorter) => {
+        //console.log('Various parameters', pagination, filters, sorter);
+        this.setState({
+            filteredInfo: filters,
+            sortedInfo: sorter,
+        });
+    }
+
+    clearFilters = () => {
+        this.setState({ filteredInfo: null });
+    }
+
+    clearAll = () => {
+        this.setState({
+            filteredInfo: null,
+            sortedInfo: null,
+        });
+    }
 
     constructor (props) {
         super(props)
@@ -24,18 +41,12 @@ export default class BinaryBetting extends LoggedInPage {
     }
 
     componentDidMount() {
+        window.addEventListener('resize', this.handleWindowSizeChange); 
         this.init()
+        this.setScroll(window.innerWidth)
     }
 
     init() {
-
-        this.props.getContractAddress().then((_value) => {
-            this.setState({
-                contractAddress: _value
-            })
-            console.log("Contract Address =" + _value)
-        })
-
         this.props.getWallet().then((_wallet) => {
             this.setState({
                 walletAddress: _wallet.toString()
@@ -43,27 +54,20 @@ export default class BinaryBetting extends LoggedInPage {
             console.log("wallet = " + _wallet.toString())
         })
 
-        this.props.getTotalSupply().then((_value) => {
-            this.setState({
-                totalSupply: _value,
-                totalSupply_display: _value.toLocaleString()
-            })
-            console.log("Total Supply =" + _value)
-        })
-
-        this.props.getTokenAmount().then((_value) => {
-            this.setState({
-                tokenAmount: _value,
-                tokenAmount_display: _value.toLocaleString()
-            })
-            console.log("TokenAmount =" + _value)
-        })
-
         this.loadData()
     }
 
-    loadData() {
+    handleWindowSizeChange = () => {
+        this.setScroll(window.innerWidth)
+    }
 
+    setScroll(width){
+        var scroll= 0;
+        if (width < 1000) scroll= 800;
+        this.setState({ scroll : scroll });
+    }
+
+    loadData() {
         this.props.getBalance().then((_value) => {
             this.setState({
                 balance: _value,
@@ -72,77 +76,79 @@ export default class BinaryBetting extends LoggedInPage {
             console.log("balance =" + _value)
         })
 
-        this.props.getTotalProfit().then((_value) => {
+        this.props.getPollsLength().then((_value) => {
             this.setState({
-                totalProfit: _value,
-                totalProfit_display: _value.toLocaleString()
+                pollsLength: _value,
             })
-            console.log("TotalProfit =" + _value  )
+            console.log("polls length =" + _value)
         })
 
-        var self=this
-        var arr=[]
-        dapp.map(function(e){
-            self.props.getProfitByAddress(e.address).then((_value) => {
-                //console.log(e.name + " at " + e.address + " = " + _value * 1e-18 )
-                arr.push({name : e.name, address: e.address, value : _value})
-            })
-        })
-
-        this.setState({
-            data: arr
-        })
-
-        this.props.getClaimableAmount().then((_value) => {
+        this.props.getPolls().then((_value) => {
             this.setState({
-                claimableAmount: _value
+                polls: _value
             })
-            console.log("claimableAmount =" + _value  )
+            console.log("polls =" + _value.toLocaleString())
         })
     }
 
-    claim() {
-       this.props.callFunction("profitCollect",[]).then((result) => {
+    tryToFinalize(id) {
+        const self= this;
+        this.props.callFunction('tryToFinalize', [id]).then((result) => {
+            console.log("called tryToFinalize func")
             if (!result) {
-                Message.error('Something wrong, collect failure!')
+                Message.error('Cannot send transaction!')
             }
 
-            const self = this
-            const collectEvent = self.props.getEventProfitCollectSuccess()
-            const claimEvent = self.props.getEventProfitClaimSuccess()
-
-            collectEvent.watch(function (err, response) {
-                if (response.args._address.toString() === self.state.walletAddress) {
-                    Notification.success({
-                        message: 'Collect successfully!',
-                    });
-                    collectEvent.stopWatching()
-
-                    self.props.callFunction("profitClaim",[]).then((result) => {
-                        if (!result) {
-                            Message.error('Something wrong, collect failure!')
-                        }
-                        claimEvent.watch(function (err, response) {
-                            if (response.args._address.toString() === self.state.walletAddress) {
-                                Notification.success({
-                                    message: 'Claim successfully!',
-                                });
-                                self.loadData()
-                                claimEvent.stopWatching()
-                                return
-                            }
-                        })
-                    })
-
-                }
-            })
-       })
+            if (result == true) {
+                console.log("finalized")
+                self.loadData()
+            }
+        })
     }
 
-    onClaim() {
+    renderDatetime(time, formatString) {
+        if (time < Date.now) console.log(time)
+        return ( 
+        <div>
+            <p>{moment(time * 1000).format(formatString) }</p>
+            <p>{moment(time * 1000).format("HH:MM") }</p>
+        </div>
+        )
+    }
+
+    agreeSelect(value) {
+        this.setState({
+            agree: value,
+        })
+    }
+
+    vote(dataSource, id) {
+        this.tryToFinalize(id)
+        if (dataSource[id][5]) return false; //if vote ended
+        let target=dataSource[id][0];
+        let voteType=dataSource[id][1];
+        let joinedByAddress= this.props.getJoinedByAddress(Number(id))
+        let votesByAddress= this.props.getVotesByAddress(Number(id))
+
+        this.setState({
+            agree: (joinedByAddress) ? !votesByAddress : true,
+            selectedId : id
+        })
+        
         const content = (
             <div>
-                <p>Claim Amount : {this.state.claimableAmount} NTY</p>
+                    <p>Target: {target} </p>
+                    <p>Vote type: {voteType ? <Icon style={{ fontSize: 20 }} type="lock" /> : <Icon style={{ fontSize: 20 }} type="unlock" />}</p>
+                    {joinedByAddress && <div>
+                        Your last vote : {votesByAddress ?<Icon type="like" /> : <Icon type="dislike" />}
+                    </div>
+                    }
+                    <p>joined : {Number(joinedByAddress)}</p>
+                    <p>vote : {Number(votesByAddress)} </p>
+                    <Select defaultValue={(joinedByAddress) ? !votesByAddress : true} style={{ width: 120 }} onChange={this.agreeSelect.bind(this)}>
+                        <Option value={true}>Agree <Icon type="like" /> </Option>
+                        <Option value={false}>Not Agree <Icon type="dislike" /></Option>
+                    </Select>
             </div>
         );
 
@@ -153,65 +159,141 @@ export default class BinaryBetting extends LoggedInPage {
             okType: 'danger',
             cancelText: 'No',
             onOk: () => {
-                this.claim()
+                this.onVote()
             },
             onCancel() {
             }
         })
+        
     }
 
-    renderClaimBtn(){
-        return (
-            <div> 
-                <Col xs={24} sm={24} md={24} lg={24} xl={24} className="contentCenter">
-                    <Button disabled={this.state.claimableAmount < EPSILON} onClick={this.onClaim.bind(this)} type="primary" className="primary selectBtn"> 
-                        Claim
-                    </Button>
-                </Col>
-            </div>
-        )
+    onVote() {
+        const self= this;
+        this.props.callFunction('vote', [self.state.selectedId, self.state.agree]).then((result) => {
+            console.log("called vote func")
+            if (!result) {
+                Message.error('Cannot send transaction!')
+            }
+
+            var event= self.props.getEventVoteSuccess()
+            event.watch(function (err, response) {
+                console.log(response)
+                if(response.args._from == self.state.walletAddress) {
+                    self.setState({
+                        tx_success: true,
+                        isLoading: false
+                    });
+                    self.loadData();
+                    Notification.success({
+                        message: 'Voted successfully!',
+                    });
+                    event.stopWatching()
+                }
+            });
+        })
     }
 
-    dappsListRender() {
+    renderVoteButton(dataSource, id){
+        var buttonName = "Vote";
+        var ended= dataSource[id][5]
+        if (ended) return (<div> </div>)
+        var endTime= dataSource[id][3]
+        if (endTime *1000 < Date.now) buttonName= "Result"
         return (
-        <div> 
-            {this.state.data.map(e => <p> {e.name}  = {(e.value.toLocaleString())} {CURRENCY} </p>)} 
-        </div>)
+            <div><Button type= "primary" className= "defaultWidthButton" >{buttonName}</Button></div>
+       )
+    }
+
+    renderTable() {
+        var dataSource = this.state.polls;
+        let { sortedInfo, filteredInfo } = this.state;
+        sortedInfo = sortedInfo || {};
+        filteredInfo = filteredInfo || {};
+        var columns = [
+            {
+                title: 'Action',
+                dataIndex: "index",
+                key: 'index',
+                sorter: (a, b) => a.index - b.index,
+                sortOrder: sortedInfo.columnKey === 'index' && sortedInfo.order,
+                render: (index) => {
+                    return this.renderVoteButton(dataSource, index)
+                }
+            }, 
+            {
+                title: 'Target',
+                dataIndex: 0,
+                key: 'target',
+                render: (target) => {
+                    return <p>{target}</p>
+                }
+            }, 
+            {
+                title: 'Ban/Unban',
+                dataIndex: 1,
+                key: 'ban',
+                sorter: (a, b) => a[1] - b[1],
+                sortOrder: sortedInfo.columnKey === 'ban' && sortedInfo.order,
+                render: (ban) => {
+                    //return this.renderDatetime(endTime, 'DD/MM/YYYY')
+                    return <p>{ban ? <Icon style={{ fontSize: 30 }} type="lock" /> : <Icon style={{ fontSize: 30 }} type="unlock" />}</p>
+                    
+                }
+            }, 
+            {
+                title: 'Start',
+                dataIndex: 2,
+                key: 'startTime',
+                sorter: (a, b) => a[2] - b[2],
+                sortOrder: sortedInfo.columnKey === 'startTime' && sortedInfo.order,
+                render: (time) => {
+                    return this.renderDatetime(time, 'DD/MM/YY')
+                }
+            },
+            {
+                title: 'End',
+                dataIndex: 3,
+                key: 'endTime',
+                sorter: (a, b) => a[3] - b[3],
+                sortOrder: sortedInfo.columnKey === 'endTime' && sortedInfo.order,
+                render: (time) => {
+                    return this.renderDatetime(time, 'DD/MM/YY')
+                }
+            },
+            {
+                title: 'Result',
+                dataIndex: "result",
+                key: 'result',
+                sorter: (a, b) => a[4] - b[4],
+                sortOrder: sortedInfo.columnKey === 'result' && sortedInfo.order,
+                render: (result) => {
+                    if (result == 2) return <p> </p>
+                    return <p>({result ? <Icon type="check" /> : <Icon type="close" />})</p>
+                }
+            }
+        ];
+
+        return (
+            <Table   
+                onChange={this.handleChange}
+                onRow={(record) => {
+                    return {
+                        onClick: () => {this.vote(this.state.polls, record.index)},       // click row, index =  rowNumber
+                    };
+                }} 
+                pagination= {false} dataSource= {this.state.polls} columns= {columns} scroll= { {x: this.state.scroll} } 
+            />
+        );
     }
 
     ord_renderContent () {
         return (
-            <div className="mainDiv">
-                <Row style={{fontSize: 20}}>
-                    <Row className="contentCenter">
-                        <h3>Share Profit</h3>
-                    </Row>
-                    <Col xs={0} sm={0} md={0} lg={3} xl={3} />
-
-                    <Col xs={24} sm={24} md={24} lg={9} xl={9} className="contentCenter">
-                        <p>Your Token : {this.state.tokenAmount_display}</p>
-                    </Col>
-                    <Col xs={24} sm={24} md={24} lg={9} xl={9} className="contentCenter">
-                        <p>Total Supply : {this.state.totalSupply_display} {TOKENNAME}</p>
-                    </Col>
-
-                    <Col xs={24} sm={24} md={24} lg={24} xl={24} className="contentCenter">
-                        <p>Your balance : {this.state.balance_display}</p>
-                    </Col>
-                    <Col xs={24} sm={24} md={24} lg={24} xl={24} className="contentCenter">
-                        <p>Current total profit : {this.state.totalProfit_display}</p>
-                    </Col>
-                </Row>
-                <Row className="contentCenter" style={{fontSize: 20}}>
-                    {this.dappsListRender()}
-                </Row>
-                <Row style={{fontSize: 20}}>
-                    <Col xs={24} sm={24} md={24} lg={24} xl={24} className="contentCenter">
-                        <p>claimable amount : {this.state.claimableAmount} {CURRENCY}</p>
-                    </Col>
-                    {this.renderClaimBtn()}
-                </Row>
-            </div>
+            <Row>
+                <Col xs={0} sm={0} md={0} lg={2} xl={3}/>
+                <Col xs={24} sm={24} md={24} lg={20} xl={18}>
+                    { this.renderTable() }
+                </Col>
+            </Row>
         );
     }
 
@@ -219,7 +301,7 @@ export default class BinaryBetting extends LoggedInPage {
         return (
             <Breadcrumb className= "breadcrumb" style={{ 'paddingLeft': '16px', 'paddingTop': '16px', float: 'right' ,background: 'white'}}>
                 <Breadcrumb.Item><Icon type="bank" /> Home</Breadcrumb.Item>
-                <Breadcrumb.Item>SP Token</Breadcrumb.Item>
+                <Breadcrumb.Item>Voting</Breadcrumb.Item>
             </Breadcrumb>
         );
     }

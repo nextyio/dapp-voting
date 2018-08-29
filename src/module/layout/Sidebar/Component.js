@@ -95,8 +95,11 @@ loadData() {
                     <Menu.Item key="blacklist">
                         <Icon type="bank" /> {I18N.get('0013')}
                     </Menu.Item>
-                    <Menu.Item key="voting">
+                    <Menu.Item key="pollCreate">
                         <Icon type="fork" /> {I18N.get('0014')}
+                    </Menu.Item>
+                    <Menu.Item key="voting">
+                        <Icon type="fork" /> {I18N.get('0015')}
                     </Menu.Item>
                 </Menu>
 
@@ -109,9 +112,9 @@ loadData() {
         const key = e.key
         if (_.includes([
             'home',
-            'SPToken',
-            'binaryBetting',
-            'lotto',
+            'blacklist',
+            'voting',
+            'pollCreate',
             'logout'
         ], key)) {
             this.props.history.push('/' + e.key)
@@ -137,13 +140,13 @@ loadData() {
 
         let sidebar = [
             'home',
-            'SPToken',
-            'binaryBetting',
-            'lotto',
+            'blacklist',
+            'voting',
+            'pollCreate',
         ];
 
         if (!url) {
-            return ['binaryBetting']
+            return ['blacklist']
         }
 
         for(var menu in sidebar) {

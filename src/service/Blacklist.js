@@ -4,7 +4,7 @@ import Tx from 'ethereumjs-tx'
 const SolidityFunction = require('web3/lib/web3/function')
 import {WEB3} from '@/constant'
 
-export default class extends BaseService {
+export default class BlacklistService extends BaseService {
 
     //Basic Functions
     async callFunction(functionName, params) {
@@ -55,5 +55,50 @@ export default class extends BaseService {
     }
 
     //Read Functions
+
+    async getBlacklistAddress() {
+        const storeUser = this.store.getState().user
+        let {contract} = storeUser.profile
+        if (!contract) {
+            return
+        }
+        return contract.Blacklist.address
+    }
+
+    async getBlacklist() {
+        const storeUser = this.store.getState().user
+        let {contract} = storeUser.profile
+        if (!contract) {
+            return
+        }
+        return contract.Blacklist.getBlacklist()
+    }
+
+    async getBlacklistLength() {
+        const storeUser = this.store.getState().user
+        let {contract} = storeUser.profile
+        if (!contract) {
+            return
+        }
+        return Number(contract.Blacklist.getBlacklistLength())
+    }
+
+    async getBlacklistedById(id) {
+        const storeUser = this.store.getState().user
+        let {contract} = storeUser.profile
+        if (!contract) {
+            return
+        }
+        return contract.Blacklist.getBlacklistedById(id)
+    }
+
+    async inBlacklist(address) {
+        const storeUser = this.store.getState().user
+        let {contract} = storeUser.profile
+        if (!contract) {
+            return
+        }
+        return contract.Blacklist.inBlacklist(address)
+    }
 
 }

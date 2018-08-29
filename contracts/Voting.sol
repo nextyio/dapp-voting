@@ -15,6 +15,9 @@ contract Voting {
         bool ended;
     }
 
+    //uint256 constant public ONEDAY = 24 * 60 * 60;
+    uint256 constant public ONEDAY = 2;
+
     Blacklist public blacklistContract;
     
     mapping(address => bool) public isTarget;
@@ -50,8 +53,16 @@ contract Voting {
         polls.push(_poll);
         emit PollCreatedSuccess(msg.sender, _target);
     }
+
+    function pollCreateByDuration(address _target, bool _ban, uint256 _duration) public {
+        require(!isTarget[_target], "is target of a poll");
+        require(blacklistContract.inBlacklist(_target) != _ban, "already banned or unbanned");
+        uint256 startTime = now;
+        uint256 endTime = now + _duration.mul(ONEDAY);
+        pollCreate(_target, _ban, startTime, endTime);
+    }
     
-    function vote(uint256 id, bool agree) public onlyGoodMan {
+    function vote(uint256 id, bool agree) public {
         require(id < polls.length, "id not exist");
         Poll memory poll = polls[id];
         require(now >= poll.startTime && now <= poll.endTime, " not during voting time");
@@ -68,7 +79,7 @@ contract Voting {
     function isSubjectApproved(uint256 yesCounter, uint256 noCounter) internal pure returns(bool) {
         return yesCounter > noCounter;
     }
-    
+
     function getPollResult(uint256 id) private view returns(bool) {
         require(id < polls.length, "id not exist");
         Poll memory poll = polls[id];
@@ -99,12 +110,33 @@ contract Voting {
         if ((now < poll.endTime) || (poll.ended)) {
             return false;
         }
-        poll.result = getPollResult(id);
-        delete poll.joinedAdresses;
-        if (poll.result) pollEnforce(id);
-        poll.ended = true;
+        polls[id].result = getPollResult(id);
+        delete polls[id].joinedAdresses;
+        if (polls[id].result) pollEnforce(id);
+        polls[id].ended = true;
         isTarget[poll.target] = false;
         return true;
+    }
+
+    function isTargetByAddress(address _address) public view returns(bool){
+        return isTarget[_address];
+    }
+
+    function getPollsLength() public view returns(uint256) { 
+        return polls.length;
+    }
+
+    function getPollById(uint256 id) public view returns(address, bool, uint256, uint256, bool, bool) {
+        Poll memory poll = polls[id];
+        return (poll.target, poll.ban, poll.startTime, poll.endTime, poll.result, poll.ended);
+    }
+
+    function getJoinedByAddress(address _address, uint256 _id) public view returns(bool) {
+        return joinedByAddress[_address][_id];
+    }
+
+    function getVotesByAddress(address _address, uint256 _id) public view  returns(bool) {
+        return votesByAddress[_address][_id];
     }
     
     function testAddWithCall(address _address) public {

@@ -11,7 +11,8 @@ const CONTRACT_ABI_Blacklist = Blacklist.abi;
 const CONTRACT_ADDRESS_Blacklist = Blacklist.networks["66666"].address;
 
 const CONTRACT_ABI_Voting = Voting.abi;
-const CONTRACT_ADDRESS_Voting = Voting.networks["66666"].address;
+//const CONTRACT_ADDRESS_Voting = Voting.networks["66666"].address;
+const CONTRACT_ADDRESS_Voting = "0xcbd01a5e5d9a555247dd209e21268f6cb116522d";
 
 //testnet 
 /*

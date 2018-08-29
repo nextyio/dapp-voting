@@ -1,5 +1,6 @@
 import BlacklistPage from '@/module/page/blacklist/Container'
 import VotingPage from '@/module/page/voting/Container'
+import PollCreatePage from '@/module/page/pollCreate/Container'
 import LoginPage from '@/module/page/login/Container'
 import TermsConditionsPage from '@/module/page/terms/Container'
 
@@ -13,6 +14,10 @@ export default [
     {
         path: '/voting',
         page: VotingPage
+    },
+    {
+        path: '/pollCreate',
+        page: PollCreatePage
     },
     {
         path: '/blacklist',

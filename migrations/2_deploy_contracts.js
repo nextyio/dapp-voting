@@ -21,7 +21,7 @@ module.exports = function(deployer) {
     deployer.deploy(Blacklist).then(function() {
         console.log(Blacklist.address)
         deployer.deploy(Voting, Blacklist.address).then(function() {
-            Voting.deployed().then(() => Blacklist.initialize(Voting.address))
+            //Voting.deployed().then(() => Blacklist.initialize(Voting.address))
            // Blacklist.initialize(Voting.address);
             console.log(Voting.address)
         })

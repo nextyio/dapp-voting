@@ -107,6 +107,14 @@ contract Blacklist is Ownable {
         return keys;
     }
     
+    function getBlacklistLength() public view returns (uint256) {
+        return keys.length;
+    }
+
+    function getBlacklistedById(uint256 id) public view returns (address) {
+        return keys[id];
+    }
+
     function inBlacklist(address addr) public view returns(bool) {
         return blacklist[addr];
     }

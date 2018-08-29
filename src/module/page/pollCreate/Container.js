@@ -37,19 +37,14 @@ export default createContainer(Component, (state) => {
         async getPollById(id) {
             return await votingService.getPollById(id)
         },
+
         async getPolls() {
             return await votingService.getPolls()
         },
-        getJoinedByAddress(id) {
-            return votingService.getJoinedByAddress(id)
-        },
-        getVotesByAddress(id) {
-            return votingService.getVotesByAddress(id)
-        },
 
         //Events
-        getEventVoteSuccess() {
-            return votingService.getEventVoteSuccess()
-        }
+        getEventCreatedSuccess() {
+            return votingService.getEventCreatedSuccess()
+        },
     }
 })

@@ -25,6 +25,17 @@ export default createContainer(Component, (state) => {
         },
 
         //Read data functions
-
+        getBlacklistAddress() {
+            return contractService.getBlacklistAddress()
+        },
+        getBlacklist() {
+            return contractService.getBlacklist()
+        },
+        getBlacklistedById(id) {
+            return contractService.getBlacklistedById(id)
+        },
+        async getBlacklistLength() {
+            return await contractService.getBlacklistLength()
+        },
     }
 })

@@ -13,7 +13,8 @@ export default {
     '0011': 'List Packages',
     '0012': 'Home',
     '0013': 'Blacklist',
-    '0014': 'Voting',
+    '0014': 'Poll Create',
+    '0015': 'Voting',
 
     '0100': 'Developer',
     '0101': 'Social',
